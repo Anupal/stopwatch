@@ -1,0 +1,24 @@
+services:
+  gtfs_postgres:
+    image: postgis/postgis:18-3.6
+    container_name: gtfs_postgres
+    environment:
+      POSTGRES_DB: gtfs
+      POSTGRES_USER: gtfs
+      POSTGRES_PASSWORD: gtfs
+      TZ: Europe/Dublin
+      PGTZ: Europe/Dublin
+    ports:
+      - "5432:5432"
+    volumes:
+      - gtfs_postgres_data:/var/lib/postgresql/
+      - ./db/gtfs_data:/gtfs_data
+      - ./db/init-gtfs.sql:/docker-entrypoint-initdb.d/init-gtfs.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gtfs -d gtfs"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  gtfs_postgres_data:
