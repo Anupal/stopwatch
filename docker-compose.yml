@@ -13,7 +13,7 @@ services:
     volumes:
       - gtfs_postgres_data:/var/lib/postgresql/
       - ./db/gtfs_data:/gtfs_data
-      - ./db/init-gtfs.sql:/docker-entrypoint-initdb.d/init-gtfs.sql
+      - ./db/scripts:/docker-entrypoint-initdb.d
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U gtfs -d gtfs"]
       interval: 5s
