@@ -11,6 +11,9 @@ import (
 	"time"
 
 	"github.com/Anupal/stopwatch/internal/config"
+	"github.com/Anupal/stopwatch/internal/handlers"
+	"github.com/Anupal/stopwatch/internal/repositories"
+	"github.com/Anupal/stopwatch/internal/services"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -40,8 +43,14 @@ func main() {
 	}
 	logger.Info("Successfully connected to database server")
 
+	// Initialize repos, services and handlers
+	stopRepo := repositories.NewStopRepository(pool, logger)
+	stopService := services.NewStopService(stopRepo, logger)
+	stopHandler := handlers.NewStopHandler(stopService, logger)
+
 	// Setup HTTP server
 	mux := http.NewServeMux()
+	mux.HandleFunc("GET /stops/{stopID}", stopHandler.GetStopByID)
 
 	server := &http.Server{
 		Addr:    ":" + cfg.Port,
