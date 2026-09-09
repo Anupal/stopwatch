@@ -45,12 +45,14 @@ func main() {
 
 	// Initialize repos, services and handlers
 	stopRepo := repositories.NewStopRepository(pool, logger)
-	stopService := services.NewStopService(stopRepo, logger)
+	arrivalRepo := repositories.NewArrivalRepository(pool, logger)
+	stopService := services.NewStopService(stopRepo, arrivalRepo, logger)
 	stopHandler := handlers.NewStopHandler(stopService, logger)
 
 	// Setup HTTP server
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /stops/{stopID}", stopHandler.GetStopByID)
+	mux.HandleFunc("GET /stops/{stopID}/arrivals", stopHandler.GetArrivals)
 
 	server := &http.Server{
 		Addr:    ":" + cfg.Port,
