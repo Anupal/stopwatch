@@ -11,10 +11,11 @@ import (
 	"time"
 
 	"github.com/Anupal/stopwatch/internal/config"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func main() {
-	_, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	// Load config
@@ -24,6 +25,20 @@ func main() {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
 		Level: cfg.LogLevel,
 	}))
+
+	// Setup database connection pool
+	pool, err := pgxpool.New(ctx, cfg.DatabaseURL())
+	if err != nil {
+		logger.Error("Unable to connect to database", "error", err)
+		os.Exit(1)
+	}
+	defer pool.Close()
+
+	if err := pool.Ping(ctx); err != nil {
+		logger.Error("Database ping failed", "error", err)
+		os.Exit(1)
+	}
+	logger.Info("Successfully connected to database server")
 
 	// Setup HTTP server
 	mux := http.NewServeMux()

@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"log/slog"
 	"os"
 	"strings"
@@ -18,8 +19,13 @@ type Config struct {
 
 func Load() *Config {
 	return &Config{
-		Port:     getEnv("PORT", "8080"),
-		LogLevel: parseLogLevel(),
+		Port:       getEnv("PORT", "8080"),
+		LogLevel:   parseLogLevel(),
+		PGHost:     getEnv("PGHOST", "localhost"),
+		PGPort:     getEnv("PGPORT", "5432"),
+		PGUser:     getEnv("PGUSER", "gtfs"),
+		PGPassword: getEnv("PGPASSWORD", "gtfs"),
+		PGDatabase: getEnv("PGDATABASE", "gtfs"),
 	}
 }
 
@@ -48,4 +54,9 @@ func getEnv(key, fallback string) string {
 		return val
 	}
 	return fallback
+}
+
+func (c *Config) DatabaseURL() string {
+	return fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable",
+		c.PGUser, c.PGPassword, c.PGHost, c.PGPort, c.PGDatabase)
 }
