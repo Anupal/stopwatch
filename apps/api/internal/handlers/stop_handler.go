@@ -1,0 +1,102 @@
+package handlers
+
+import (
+	"encoding/json"
+	"log/slog"
+	"net/http"
+	"strconv"
+
+	"github.com/Anupal/stopwatch/internal/models"
+	"github.com/Anupal/stopwatch/internal/services"
+)
+
+type StopHandler struct {
+	stopService services.StopService
+	logger      *slog.Logger
+}
+
+func NewStopHandler(s services.StopService, l *slog.Logger) *StopHandler {
+	return &StopHandler{stopService: s, logger: l}
+}
+
+// GET /stops/{stopID}
+func (h *StopHandler) GetStopByID(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	stopID := r.PathValue("stopID")
+
+	h.logger.Info("Getting details for stop", "stopID", stopID)
+
+	stop, err := h.stopService.GetStopByID(r.Context(), stopID)
+	if err != nil {
+		h.logger.Error("Failed to fetch details for stop", "stopID", stopID, "error", err)
+		writeJSONError(w, http.StatusInternalServerError, "Failed to find stop")
+		return
+	}
+	h.logger.Info("Successfully fetched details for stop", "stopID", stopID, "stop", stop)
+	json.NewEncoder(w).Encode(stop)
+}
+
+// GET /stops/{stopID}/arrivals
+func (h *StopHandler) GetArrivals(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	query := r.URL.Query()
+
+	stopID := r.PathValue("stopID")
+	expandStop := query.Get("expandStop") == "true"
+
+	h.logger.Info("Getting arrivals for stop", "stopID", stopID)
+
+	params := models.GetStopArrivalsParams{
+		StopID:        stopID,
+		MinutesAhead:  parseIntParam(query.Get("minutesAhead"), 0),
+		MinutesBehind: parseIntParam(query.Get("minutesBehind"), 0),
+	}
+
+	arrivals, err := h.stopService.GetArrivals(r.Context(), params)
+	if err != nil {
+		h.logger.Error("Failed to fetch arrivals for stop", "stopID", stopID, "error", err)
+		writeJSONError(w, http.StatusInternalServerError, "Failed to fetch arrivals")
+		return
+	}
+
+	response := models.GetArrivalsResponse{
+		MinutesAhead:  params.MinutesAhead,
+		MinutesBehind: params.MinutesBehind,
+		Arrivals:      arrivals,
+	}
+
+	if expandStop {
+		stop, err := h.stopService.GetStopByID(r.Context(), params.StopID)
+		if err != nil {
+			h.logger.Error("Failed to fetch details for stop", "stopID", stopID, "error", err)
+			writeJSONError(w, http.StatusInternalServerError, "Failed to find stop")
+			return
+		}
+		h.logger.Info("Successfully fetched details for stop", "stopID", stopID, "stop", stop)
+		response.Stop = &stop
+
+	} else {
+		response.StopID = stopID
+	}
+
+	h.logger.Info("Successfully fetched arrivals for stop", "stopID", stopID, "arrivals", arrivals)
+	json.NewEncoder(w).Encode(response)
+}
+
+func writeJSONError(w http.ResponseWriter, status int, message string) {
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(map[string]string{
+		"error": message,
+	})
+}
+
+func parseIntParam(val string, defaultVal int) int {
+	convertedVal, err := strconv.Atoi(val)
+	if err != nil {
+		return defaultVal
+	}
+
+	return convertedVal
+}

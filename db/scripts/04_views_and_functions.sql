@@ -52,8 +52,7 @@ RETURNS TABLE (
     departure_time TEXT,
     route_short_name TEXT,
     route_long_name TEXT,
-    trip_headsign TEXT,
-    stop_name TEXT
+    trip_headsign TEXT
 ) AS $$
 BEGIN
     RETURN QUERY
@@ -63,8 +62,7 @@ BEGIN
         v.departure_time,
         v.route_short_name,
         v.route_long_name,
-        v.trip_headsign,
-        v.stop_name
+        v.trip_headsign
     FROM v_today_arrivals v
     WHERE v.stop_id = p_stop_id
       AND v.arrival_interval >= LOCALTIME::interval - (p_minutes_behind || ' minutes')::interval
