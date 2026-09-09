@@ -8,24 +8,28 @@ import (
 )
 
 type Config struct {
-	PGHost     string
-	PGPort     string
-	PGUser     string
-	PGPassword string
-	PGDatabase string
-	Port       string
-	LogLevel   *slog.LevelVar
+	PGHost      string
+	PGPort      string
+	PGUser      string
+	PGPassword  string
+	PGDatabase  string
+	Port        string
+	LogLevel    *slog.LevelVar
+	GTFSRUrl    string
+	GTFSRApiKey string
 }
 
 func Load() *Config {
 	return &Config{
-		Port:       getEnv("PORT", "8080"),
-		LogLevel:   parseLogLevel(),
-		PGHost:     getEnv("PGHOST", "localhost"),
-		PGPort:     getEnv("PGPORT", "5432"),
-		PGUser:     getEnv("PGUSER", "gtfs"),
-		PGPassword: getEnv("PGPASSWORD", "gtfs"),
-		PGDatabase: getEnv("PGDATABASE", "gtfs"),
+		Port:        getEnv("PORT", "8080"),
+		LogLevel:    parseLogLevel(),
+		PGHost:      getEnv("PGHOST", "localhost"),
+		PGPort:      getEnv("PGPORT", "5432"),
+		PGUser:      getEnv("PGUSER", "gtfs"),
+		PGPassword:  getEnv("PGPASSWORD", "gtfs"),
+		PGDatabase:  getEnv("PGDATABASE", "gtfs"),
+		GTFSRUrl:    getEnv("GTFSR_URL", ""),
+		GTFSRApiKey: getEnv("GTFSR_API_KEY", ""),
 	}
 }
 

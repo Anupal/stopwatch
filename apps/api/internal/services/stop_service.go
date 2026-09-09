@@ -17,11 +17,21 @@ type StopService interface {
 type stopService struct {
 	arrivalRepo repositories.ArrivalRepository
 	stopRepo    repositories.StopRepository
+	gtfsrRepo   repositories.GTFSRRepository
 	logger      *slog.Logger
 }
 
-func NewStopService(stopRepo repositories.StopRepository, arrivalRepo repositories.ArrivalRepository, logger *slog.Logger) StopService {
-	return &stopService{stopRepo: stopRepo, arrivalRepo: arrivalRepo, logger: logger}
+func NewStopService(
+	stopRepo repositories.StopRepository,
+	arrivalRepo repositories.ArrivalRepository,
+	gtfsrRepo repositories.GTFSRRepository,
+	logger *slog.Logger) StopService {
+	return &stopService{
+		stopRepo:    stopRepo,
+		arrivalRepo: arrivalRepo,
+		gtfsrRepo:   gtfsrRepo,
+		logger:      logger,
+	}
 }
 
 func (s *stopService) GetStopByID(ctx context.Context, stopID string) (models.Stop, error) {
