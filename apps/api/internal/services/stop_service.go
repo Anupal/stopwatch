@@ -11,7 +11,7 @@ import (
 
 type StopService interface {
 	GetStopByID(ctx context.Context, stopID string) (models.Stop, error)
-	GetArrivals(ctx context.Context, params models.GetStopArrivalsParams) ([]models.Arrival, error)
+	GetArrivals(ctx context.Context, params models.GetStopArrivalsParams) ([]models.ArrivalResponse, error)
 }
 
 type stopService struct {
@@ -42,12 +42,19 @@ func (s *stopService) GetStopByID(ctx context.Context, stopID string) (models.St
 	return stop, nil
 }
 
-func (s *stopService) GetArrivals(ctx context.Context, params models.GetStopArrivalsParams) ([]models.Arrival, error) {
+func (s *stopService) GetArrivals(ctx context.Context, params models.GetStopArrivalsParams) ([]models.ArrivalResponse, error) {
 	params.NormalizeMinutes()
 
 	arrivals, err := s.arrivalRepo.GetByStop(ctx, params)
 	if err != nil {
 		return nil, fmt.Errorf("service get arrivals: %w", err)
 	}
-	return arrivals, nil
+
+	// update arrivals based on realtime GTFS-R feed
+	filteredArrivals, err := s.gtfsrRepo.UpdateArrivalsWithRealtime(ctx, params.StopID, arrivals)
+	if err != nil {
+		return nil, fmt.Errorf("service update realtime arrivals: %w", err)
+	}
+
+	return filteredArrivals, nil
 }

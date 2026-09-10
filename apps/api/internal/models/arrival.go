@@ -9,12 +9,17 @@ type Arrival struct {
 	TripHeadsign   string `db:"trip_headsign"`
 }
 
+type ArrivalResponse struct {
+	Arrival
+	MinutesRemaining int
+	Status           string
+}
+
 type GetArrivalsResponse struct {
-	StopID        string    `json:"stop_id,omitempty"`
-	Stop          *Stop     `json:"stop,omitempty"`
-	MinutesAhead  int       `json:"minutes_ahead,omitempty"`
-	MinutesBehind int       `json:"minutes_behind,omitempty"`
-	Arrivals      []Arrival `json:"arrivals,omitempty"`
+	StopID       string            `json:"stop_id,omitempty"`
+	Stop         *Stop             `json:"stop,omitempty"`
+	MinutesAhead int               `json:"minutes_ahead,omitempty"`
+	Arrivals     []ArrivalResponse `json:"arrivals,omitempty"`
 }
 
 const (
