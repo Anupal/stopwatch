@@ -1,18 +1,18 @@
 package models
 
 type Arrival struct {
-	TripId         string `db:"trip_id"`
-	ArrivalTime    string `db:"arrival_time"`
-	DepartureTime  string `db:"departure_time"`
-	RouteShortName string `db:"route_short_name"`
-	RouteLongName  string `db:"route_long_name"`
-	TripHeadsign   string `db:"trip_headsign"`
+	TripId         string `db:"trip_id" json:"trip_id"`
+	ArrivalTime    string `db:"arrival_time" json:"arrival_time"`
+	DepartureTime  string `db:"departure_time" json:"departure_time"`
+	RouteShortName string `db:"route_short_name" json:"route_short_name"`
+	RouteLongName  string `db:"route_long_name" json:"route_long_name"`
+	TripHeadsign   string `db:"trip_headsign" json:"trip_headsign"`
 }
 
 type ArrivalResponse struct {
 	Arrival
-	MinutesRemaining int
-	Status           string
+	MinutesRemaining int    `json:"minutes_remaining"`
+	Status           string `json:"status"`
 }
 
 type GetArrivalsResponse struct {
