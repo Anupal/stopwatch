@@ -15,6 +15,7 @@ import (
 )
 
 type GTFSRRepository interface {
+	UpdateArrivalsWithoutRealtime(arrivals []models.Arrival) ([]models.ArrivalResponse, error)
 	UpdateArrivalsWithRealtime(stopID string, arrivals []models.Arrival) ([]models.ArrivalResponse, error)
 	GetLatestFeed(ctx context.Context) error
 }
@@ -31,6 +32,33 @@ type gtfsrRepository struct {
 
 func NewGTFSRRepository(feedURL string, feedApiKey string, l *slog.Logger) GTFSRRepository {
 	return &gtfsrRepository{logger: l, feedApiKey: feedApiKey, feedURL: feedURL}
+}
+
+func (r *gtfsrRepository) UpdateArrivalsWithoutRealtime(arrivals []models.Arrival) ([]models.ArrivalResponse, error) {
+	now := time.Now()
+	filteredArrivals := make([]models.ArrivalResponse, 0, len(arrivals))
+
+	for i := range arrivals {
+		// create ArrivalResponse instance from Arrival instance
+		arrival := models.ArrivalResponse{
+			Arrival: arrivals[i],
+		}
+
+		// get parsed arrival and departure times
+		arrivalTime, err := parseTimeToday(arrival.ArrivalTime, now)
+		if err != nil {
+			return nil, fmt.Errorf("invalid time %q: %w", arrival.ArrivalTime, err)
+		}
+
+		arrival.MinutesRemaining = int(arrivalTime.Sub(now).Minutes())
+		arrival.Status = "UNKNOWN"
+
+		if !arrivalTime.Before(now) {
+			filteredArrivals = append(filteredArrivals, arrival)
+		}
+	}
+
+	return filteredArrivals, nil
 }
 
 func (r *gtfsrRepository) UpdateArrivalsWithRealtime(stopID string, arrivals []models.Arrival) ([]models.ArrivalResponse, error) {

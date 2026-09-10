@@ -50,14 +50,21 @@ func (s *stopService) GetArrivals(ctx context.Context, params models.GetStopArri
 		return nil, fmt.Errorf("service get arrivals: %w", err)
 	}
 
+	var filteredArrivals []models.ArrivalResponse
+
 	// update arrivals based on realtime GTFS-R feed
-	err = s.gtfsrRepo.GetLatestFeed(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("service update GTFS-R feed: %w", err)
+	if params.UseRealTimeFeed {
+		err = s.gtfsrRepo.GetLatestFeed(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("service update GTFS-R feed: %w", err)
+		}
+		filteredArrivals, err = s.gtfsrRepo.UpdateArrivalsWithRealtime(params.StopID, arrivals)
+	} else {
+		filteredArrivals, err = s.gtfsrRepo.UpdateArrivalsWithoutRealtime(arrivals)
 	}
-	filteredArrivals, err := s.gtfsrRepo.UpdateArrivalsWithRealtime(params.StopID, arrivals)
+
 	if err != nil {
-		return nil, fmt.Errorf("service update realtime arrivals: %w", err)
+		return nil, fmt.Errorf("service update arrivals: %w", err)
 	}
 
 	return filteredArrivals, nil

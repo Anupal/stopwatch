@@ -28,9 +28,10 @@ const (
 )
 
 type GetStopArrivalsParams struct {
-	StopID        string
-	MinutesAhead  int
-	MinutesBehind int
+	StopID          string
+	MinutesAhead    int
+	MinutesBehind   int
+	UseRealTimeFeed bool
 }
 
 // Normalize to ensure parameters have valid defaults applied
