@@ -65,11 +65,18 @@ func (r *gtfsrRepository) UpdateArrivalsWithRealtime(stopID string, arrivals []m
 	now := time.Now()
 	filteredArrivals := make([]models.ArrivalResponse, 0, len(arrivals))
 
+	r.logger.Debug("Applying realtime updates to arrivals",
+		"stop_id", stopID,
+		"arrival_count", len(arrivals),
+	)
+
 	for i := range arrivals {
 		// create ArrivalResponse instance from Arrival instance
 		arrival := models.ArrivalResponse{
 			Arrival: arrivals[i],
 		}
+
+		r.logger.Debug("Applying updates to arrival", "trip_id", arrival.TripId, "route_short_name", arrival.RouteShortName, "expected_arrival_time", arrival.ArrivalTime)
 
 		// get parsed arrival and departure times
 		arrivalTime, err := parseTimeToday(arrival.ArrivalTime, now)
@@ -84,49 +91,92 @@ func (r *gtfsrRepository) UpdateArrivalsWithRealtime(stopID string, arrivals []m
 		tripUpdate, ok := r.tripUpdateMap[arrival.TripId]
 
 		// no realtime data for this trip.
+		// excluding to avoid trip with separate trip ids but same arrival time
 		if !ok {
-			// --- note: logic to add scheduled arrival unchanged                       ---
-			// --- excluding to avoid trip with separate trip ids but same arrival time ---
-			// arrival.MinutesRemaining = int(arrivalTime.Sub(now).Minutes())
-			// arrival.Status = "SCHEDULED"
-
-			// if !arrivalTime.Before(now) {
-			// 	filteredArrivals = append(filteredArrivals, arrival)
-			// }
+			r.logger.Debug("No realtime update for trip", "trip_id", arrival.TripId)
 			continue
 		}
 
+		r.logger.Debug("Looping through all stop updates for trip", "trip_id", arrival.TripId, "stop_count", len(tripUpdate.StopTimeUpdate))
+		stopFound := false
 		// go through updates for all stops
 		for _, stopUpdate := range tripUpdate.StopTimeUpdate {
 			if stopUpdate.GetStopId() != stopID {
 				continue
 			}
 
+			r.logger.Debug("Found realtime stop update",
+				"trip_id", arrival.TripId,
+				"stop_id", stopID,
+			)
+
 			// add arrival and departure delays
-			var updatedArrivalTime, updatedDepartureTime time.Time
-
-			if stopUpdate.Arrival != nil && stopUpdate.Arrival.Delay != nil {
-				updatedArrivalTime = addDelay(arrivalTime, stopUpdate.Arrival.GetDelay())
-				arrival.ArrivalTime = updatedArrivalTime.Format("15:04:05")
-
-				// computes minutes left until arrival
-				minutesLeft := updatedArrivalTime.Sub(now).Minutes()
-				arrival.MinutesRemaining = int(math.Round(minutesLeft))
-			}
-			if stopUpdate.Departure != nil && stopUpdate.Departure.Delay != nil {
-				updatedDepartureTime = addDelay(departureTime, stopUpdate.Departure.GetDelay())
-				arrival.DepartureTime = updatedDepartureTime.Format("15:04:05")
-			}
-
-			arrival.Status = stopUpdate.GetScheduleRelationship().String()
+			updatedArrivalTime := r.applyStopTimeUpdate(
+				&arrival,
+				stopUpdate,
+				arrivalTime,
+				departureTime,
+				now,
+			)
 
 			// only include arrival after current time
 			if !updatedArrivalTime.Before(now) {
+				r.logger.Debug("Including arrival",
+					"trip_id", arrival.TripId,
+					"route_short_name", arrival.RouteShortName,
+					"arrival_time", arrival.ArrivalTime,
+					"minutes_remaining", arrival.MinutesRemaining,
+				)
 				filteredArrivals = append(filteredArrivals, arrival)
+			} else {
+				r.logger.Debug("Excluding past arrival",
+					"trip_id", arrival.TripId,
+					"route_short_name", arrival.RouteShortName,
+					"arrival_time", arrival.ArrivalTime,
+				)
 			}
+
+			stopFound = true
 
 			// no need to look at remaining stops
 			break
+		}
+
+		// If the stop was not found,
+		// this can happen when real-time delay predictions are unavailable and only stop-time updates
+		// for stops the bus has already passed are present.
+		// In this case, we fall back to the measured delay from the most recent stop.
+		totalStopsInUpdate := len(tripUpdate.StopTimeUpdate)
+		if !stopFound && totalStopsInUpdate > 0 {
+			r.logger.Debug("Stop not found in stop updates, applying realtime info for the most recent stop")
+
+			mostRecentStopUpdate := tripUpdate.StopTimeUpdate[totalStopsInUpdate-1]
+			updatedArrivalTime := r.applyStopTimeUpdate(
+				&arrival,
+				mostRecentStopUpdate,
+				arrivalTime,
+				departureTime,
+				now,
+			)
+
+			r.logger.Debug("Updated Arrival", "trip_id", arrival.TripId, "route_short_name", arrival.RouteShortName, "updated_arrival_time", arrival.ArrivalTime)
+
+			// only include arrival after current time
+			if !updatedArrivalTime.Before(now) {
+				r.logger.Debug("Including arrival",
+					"trip_id", arrival.TripId,
+					"route_short_name", arrival.RouteShortName,
+					"arrival_time", arrival.ArrivalTime,
+					"minutes_remaining", arrival.MinutesRemaining,
+				)
+				filteredArrivals = append(filteredArrivals, arrival)
+			} else {
+				r.logger.Debug("Excluding past arrival",
+					"trip_id", arrival.TripId,
+					"route_short_name", arrival.RouteShortName,
+					"arrival_time", arrival.ArrivalTime,
+				)
+			}
 		}
 	}
 
@@ -190,6 +240,7 @@ func (r *gtfsrRepository) GetLatestFeed(ctx context.Context) error {
 }
 
 func addDelay(scheduled time.Time, delay int32) time.Time {
+
 	return scheduled.Add(time.Duration(delay) * time.Second)
 }
 
@@ -199,4 +250,49 @@ func parseTimeToday(timeStr string, now time.Time) (time.Time, error) {
 		return time.Time{}, err
 	}
 	return time.Date(now.Year(), now.Month(), now.Day(), t.Hour(), t.Minute(), t.Second(), 0, now.Location()), nil
+}
+
+func (r *gtfsrRepository) applyStopTimeUpdate(
+	arrival *models.ArrivalResponse,
+	stopUpdate *gtfs.TripUpdate_StopTimeUpdate,
+	arrivalTime, departureTime, now time.Time,
+) time.Time {
+	updatedArrivalTime := arrivalTime
+
+	if stopUpdate.Arrival != nil && stopUpdate.Arrival.Delay != nil {
+		delay := stopUpdate.Arrival.GetDelay()
+		updatedArrivalTime = addDelay(arrivalTime, delay)
+
+		r.logger.Debug("Applied realtime arrival delay",
+			"trip_id", arrival.TripId,
+			"stop_id", stopUpdate.GetStopId(),
+			"scheduled_time", arrivalTime.Format("15:04:05"),
+			"delay_secs", delay,
+			"updated_time", updatedArrivalTime.Format("15:04:05"),
+		)
+
+		arrival.ArrivalTime = updatedArrivalTime.Format("15:04:05")
+		arrival.MinutesRemaining = int(math.Round(
+			updatedArrivalTime.Sub(now).Minutes(),
+		))
+	}
+
+	if stopUpdate.Departure != nil && stopUpdate.Departure.Delay != nil {
+		delay := stopUpdate.Departure.GetDelay()
+		updatedDepartureTime := addDelay(departureTime, delay)
+
+		r.logger.Debug("Applied realtime departure delay",
+			"trip_id", arrival.TripId,
+			"stop_id", stopUpdate.GetStopId(),
+			"scheduled_time", departureTime.Format("15:04:05"),
+			"delay_secs", stopUpdate.Departure.GetDelay(),
+			"updated_time", updatedDepartureTime.Format("15:04:05"),
+		)
+
+		arrival.DepartureTime = updatedDepartureTime.Format("15:04:05")
+	}
+	arrival.Status = stopUpdate.GetScheduleRelationship().String()
+	r.logger.Debug("Updating schedule status", "status", arrival.Status)
+
+	return updatedArrivalTime
 }
