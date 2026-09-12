@@ -97,6 +97,24 @@ func (r *gtfsrRepository) UpdateArrivalsWithRealtime(stopID string, arrivals []m
 			continue
 		}
 
+		// check if trip is canceled
+		scheduleRelationship := tripUpdate.GetTrip().GetScheduleRelationship()
+
+		if scheduleRelationship == gtfs.TripDescriptor_CANCELED {
+			arrival.Status = scheduleRelationship.String()
+
+			r.logger.Debug("Trip is canceled",
+				"trip_id", arrival.TripId,
+				"route_short_name", arrival.RouteShortName,
+				"status", arrival.Status,
+			)
+
+			arrival.Status = scheduleRelationship.String()
+
+			filteredArrivals = append(filteredArrivals, arrival)
+			continue
+		}
+
 		r.logger.Debug("Looping through all stop updates for trip", "trip_id", arrival.TripId, "stop_count", len(tripUpdate.StopTimeUpdate))
 		stopFound := false
 		// go through updates for all stops
