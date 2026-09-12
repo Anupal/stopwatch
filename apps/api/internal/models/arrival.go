@@ -1,20 +1,25 @@
 package models
 
 type Arrival struct {
-	TripId         string `db:"trip_id"`
-	ArrivalTime    string `db:"arrival_time"`
-	DepartureTime  string `db:"departure_time"`
-	RouteShortName string `db:"route_short_name"`
-	RouteLongName  string `db:"route_long_name"`
-	TripHeadsign   string `db:"trip_headsign"`
+	TripId         string `db:"trip_id" json:"trip_id"`
+	ArrivalTime    string `db:"arrival_time" json:"arrival_time"`
+	DepartureTime  string `db:"departure_time" json:"departure_time"`
+	RouteShortName string `db:"route_short_name" json:"route_short_name"`
+	RouteLongName  string `db:"route_long_name" json:"route_long_name"`
+	TripHeadsign   string `db:"trip_headsign" json:"trip_headsign"`
+}
+
+type ArrivalResponse struct {
+	Arrival
+	MinutesRemaining int    `json:"minutes_remaining"`
+	Status           string `json:"status"`
 }
 
 type GetArrivalsResponse struct {
-	StopID        string    `json:"stop_id,omitempty"`
-	Stop          *Stop     `json:"stop,omitempty"`
-	MinutesAhead  int       `json:"minutes_ahead,omitempty"`
-	MinutesBehind int       `json:"minutes_behind,omitempty"`
-	Arrivals      []Arrival `json:"arrivals,omitempty"`
+	StopID       string            `json:"stop_id,omitempty"`
+	Stop         *Stop             `json:"stop,omitempty"`
+	MinutesAhead int               `json:"minutes_ahead,omitempty"`
+	Arrivals     []ArrivalResponse `json:"arrivals,omitempty"`
 }
 
 const (
@@ -23,9 +28,10 @@ const (
 )
 
 type GetStopArrivalsParams struct {
-	StopID        string
-	MinutesAhead  int
-	MinutesBehind int
+	StopID          string
+	MinutesAhead    int
+	MinutesBehind   int
+	UseRealTimeFeed bool
 }
 
 // Normalize to ensure parameters have valid defaults applied

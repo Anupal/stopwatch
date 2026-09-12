@@ -43,10 +43,25 @@ func main() {
 	}
 	logger.Info("Successfully connected to database server")
 
+	// Validate GTFSR keys are present
+	if cfg.GTFSRUrl == "" {
+		logger.Error("'GTFSR_URL' environment variable is not set.")
+		os.Exit(1)
+	}
+	if cfg.GTFSRApiKey == "" {
+		logger.Error("'GTFSR_API_KEY' environment variable is not set.")
+		os.Exit(1)
+	}
+
 	// Initialize repos, services and handlers
 	stopRepo := repositories.NewStopRepository(pool, logger)
 	arrivalRepo := repositories.NewArrivalRepository(pool, logger)
-	stopService := services.NewStopService(stopRepo, arrivalRepo, logger)
+	gtfsrRepo := repositories.NewGTFSRRepository(
+		cfg.GTFSRUrl,
+		cfg.GTFSRApiKey,
+		logger,
+	)
+	stopService := services.NewStopService(stopRepo, arrivalRepo, gtfsrRepo, logger)
 	stopHandler := handlers.NewStopHandler(stopService, logger)
 
 	// Setup HTTP server

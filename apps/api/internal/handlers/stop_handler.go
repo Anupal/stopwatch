@@ -45,13 +45,14 @@ func (h *StopHandler) GetArrivals(w http.ResponseWriter, r *http.Request) {
 
 	stopID := r.PathValue("stopID")
 	expandStop := query.Get("expandStop") == "true"
+	useRealTimeFeed := query.Get("realtime") == "true"
 
 	h.logger.Info("Getting arrivals for stop", "stopID", stopID)
 
 	params := models.GetStopArrivalsParams{
-		StopID:        stopID,
-		MinutesAhead:  parseIntParam(query.Get("minutesAhead"), 0),
-		MinutesBehind: parseIntParam(query.Get("minutesBehind"), 0),
+		StopID:          stopID,
+		MinutesAhead:    parseIntParam(query.Get("minutesAhead"), 0),
+		UseRealTimeFeed: useRealTimeFeed,
 	}
 
 	arrivals, err := h.stopService.GetArrivals(r.Context(), params)
@@ -62,9 +63,8 @@ func (h *StopHandler) GetArrivals(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := models.GetArrivalsResponse{
-		MinutesAhead:  params.MinutesAhead,
-		MinutesBehind: params.MinutesBehind,
-		Arrivals:      arrivals,
+		MinutesAhead: params.MinutesAhead,
+		Arrivals:     arrivals,
 	}
 
 	if expandStop {
