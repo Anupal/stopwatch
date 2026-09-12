@@ -161,7 +161,7 @@ func (r *gtfsrRepository) UpdateArrivalsWithRealtime(stopID string, arrivals []m
 		}
 
 		// If the stop was not found,
-		// this can happen when real-time delay predictions are unavailable and only stop-time updates
+		// this can happen when real-time delay predictions are unavailable and only measured arrival updates
 		// for stops the bus has already passed are present.
 		// In this case, we fall back to the measured delay from the most recent stop.
 		totalStopsInUpdate := len(tripUpdate.StopTimeUpdate)
@@ -176,6 +176,14 @@ func (r *gtfsrRepository) UpdateArrivalsWithRealtime(stopID string, arrivals []m
 				departureTime,
 				now,
 			)
+
+			// fallback if most recent stop was skipped
+			// this could be that no one was at the stop or no one needed to get off
+			// so we assume the bus is SCHEDULED at ths stop as trip hasn't been CANCELED
+
+			if arrival.Status == "SKIPPED" {
+				arrival.Status = "SCHEDULED"
+			}
 
 			r.logger.Debug("Updated Arrival", "trip_id", arrival.TripId, "route_short_name", arrival.RouteShortName, "updated_arrival_time", arrival.ArrivalTime)
 
