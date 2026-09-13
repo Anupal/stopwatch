@@ -19,6 +19,23 @@ func NewStopHandler(s services.StopService, l *slog.Logger) *StopHandler {
 	return &StopHandler{stopService: s, logger: l}
 }
 
+// GET /stops
+func (h *StopHandler) GetStops(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	agencyIDs := r.URL.Query()["agency_id"]
+
+	stops, err := h.stopService.GetStops(r.Context(), agencyIDs)
+	if err != nil {
+		h.logger.Error("Failed to fetch stops", "agency_ids", agencyIDs, "error", err)
+		writeJSONError(w, http.StatusInternalServerError, "Failed to fetch stops")
+		return
+	}
+
+	h.logger.Info("Successfully fetched stops", "agency_ids", agencyIDs, "num_stop", len(stops))
+	json.NewEncoder(w).Encode(stops)
+}
+
 // GET /stops/{stopID}
 func (h *StopHandler) GetStopByID(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
