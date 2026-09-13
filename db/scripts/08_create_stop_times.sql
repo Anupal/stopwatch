@@ -21,7 +21,6 @@ WITH (FORMAT csv, HEADER true, FREEZE);
 
 ALTER TABLE stop_times ADD PRIMARY KEY (trip_id, stop_sequence);
 
--- TODO: follow claude
 ALTER TABLE stop_times ADD COLUMN arrival_interval INTERVAL;
 UPDATE stop_times SET arrival_interval = arrival_time::interval;
 CREATE INDEX idx_stop_times_stop_arrival ON stop_times (stop_id, arrival_interval) WITH (fillfactor = 100);

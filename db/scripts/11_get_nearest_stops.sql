@@ -1,13 +1,3 @@
-CREATE MATERIALIZED VIEW mv_agency_stops AS
-SELECT DISTINCT r.agency_id, s.stop_id, s.stop_name, s.geom
-FROM stops s
-JOIN stop_times st ON s.stop_id = st.stop_id
-JOIN trips t ON st.trip_id = t.trip_id
-JOIN routes r ON t.route_id = r.route_id;
-
-CREATE INDEX idx_mv_agency_stops_agency ON mv_agency_stops (agency_id);
-CREATE INDEX idx_mv_agency_stops_geom ON mv_agency_stops USING gist (geom);
-
 CREATE OR REPLACE FUNCTION get_nearest_stops_by_agency(
     p_agency_id TEXT,
     p_lat DOUBLE PRECISION,
