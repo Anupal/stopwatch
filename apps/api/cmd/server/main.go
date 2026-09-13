@@ -67,6 +67,7 @@ func main() {
 	// Setup HTTP server
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /stops/", stopHandler.GetStops)
+	mux.HandleFunc("GET /stops/nearest", stopHandler.GetNearestStops)
 	mux.HandleFunc("GET /stops/{stopID}", stopHandler.GetStopByID)
 	mux.HandleFunc("GET /stops/{stopID}/arrivals", stopHandler.GetArrivals)
 

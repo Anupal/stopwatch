@@ -7,6 +7,7 @@ type Stop struct {
 	StopLat  float64  `json:"latitude"`
 	StopLon  float64  `json:"longitude"`
 	Agencies []Agency `json:"agencies"`
+	Distance float64  `json:"distance_meters,omitempty"`
 }
 
 type StopAgencyMV struct {
@@ -18,4 +19,12 @@ type StopAgencyMV struct {
 	AgencyID   string  `db:"agency_id"`
 	AgencyName string  `db:"agency_name"`
 	AgencyURL  string  `db:"agency_url"`
+	Distance   float64 `db:"distance_meters"`
+}
+
+type GetNearestStopsParams struct {
+	AgencyIDs       []string
+	Latitude        string
+	Longitude       string
+	MaximumDistance string
 }

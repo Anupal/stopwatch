@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -33,6 +34,69 @@ func (h *StopHandler) GetStops(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.logger.Info("Successfully fetched stops", "agency_ids", agencyIDs, "num_stop", len(stops))
+	json.NewEncoder(w).Encode(stops)
+}
+
+// TODO: add code for the new endpoints
+// def normalize(s):
+//     s = s.lower()
+//     s = remove_accents(s)
+//     s = replace_punctuation(s, " ")
+//     s = collapse_whitespace(s)
+//     return s
+
+// // GET /stops/nearby?search_query={query}
+// func (h *StopHandler) GetStopsByName(w http.ResponseWriter, r *http.Request) {
+
+// }
+
+// GET /stops/nearby?agency={agency1ID}&agency={agency2ID}&latitude={latitude}&longitude={longitude}
+func (h *StopHandler) GetNearestStops(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	query := r.URL.Query()
+
+	agencyIDs := query["agencyId"]
+	if len(agencyIDs) == 0 {
+		writeJSONError(w, http.StatusBadRequest, "Missing 'agencyId' query param.")
+		return
+	}
+	latitude := query.Get("latitude")
+	if latitude == "" {
+		writeJSONError(w, http.StatusBadRequest, "Missing 'latitude' query param.")
+		return
+	}
+	longitude := query.Get("longitude")
+	if longitude == "" {
+		writeJSONError(w, http.StatusBadRequest, "Missing 'longitude' query param.")
+		return
+	}
+	maxDistance := query.Get("maxDistance")
+	if maxDistance == "" {
+		writeJSONError(w, http.StatusBadRequest, "Missing 'maxDistance' query param.")
+	}
+
+	params := models.GetNearestStopsParams{
+		AgencyIDs:       agencyIDs,
+		Latitude:        latitude,
+		Longitude:       longitude,
+		MaximumDistance: maxDistance,
+	}
+
+	h.logger.Debug("handler---", "params", params)
+
+	stops, err := h.stopService.GetNearestStops(r.Context(), params)
+	if err != nil {
+		h.logger.Error("Failed to fetch nearest stops", "agency_ids", agencyIDs, "error", err)
+		writeJSONError(
+			w,
+			http.StatusInternalServerError,
+			fmt.Sprintf("Failed to fetch stops near to (%v, %v)", latitude, longitude),
+		)
+		return
+	}
+
+	h.logger.Info("Successfully fetched nearest stops", "agency_ids", agencyIDs, "num_stop", len(stops))
 	json.NewEncoder(w).Encode(stops)
 }
 
