@@ -1,13 +1,8 @@
 services:
   gtfs_postgres:
     image: postgis/postgis:18-3.6
-    container_name: gtfs_postgres
-    environment:
-      POSTGRES_DB: gtfs
-      POSTGRES_USER: gtfs
-      POSTGRES_PASSWORD: gtfs
-      TZ: Europe/Dublin
-      PGTZ: Europe/Dublin
+    env_file:
+      - .env
     ports:
       - "5432:5432"
     volumes:
@@ -15,10 +10,31 @@ services:
       - ./db/gtfs_data:/gtfs_data
       - ./db/scripts:/docker-entrypoint-initdb.d
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U gtfs -d gtfs"]
-      interval: 5s
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -p 5432  -U gtfs -d gtfs"]
+      # 5 mins grace period after container init
+      start_period: 5m
+      interval: 30s
       timeout: 5s
-      retries: 5
+      retries: 10
+    networks:
+      - app_network
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    depends_on:
+      gtfs_postgres:
+        condition: service_healthy
+    
+    networks:
+      - app_network
+
+networks:
+  app_network:
 
 volumes:
   gtfs_postgres_data:
