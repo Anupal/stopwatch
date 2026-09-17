@@ -1,3 +1,5 @@
-
 # db / gtfs stuff
 gtfs_data
+misc/
+
+.env
