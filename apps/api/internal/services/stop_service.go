@@ -67,8 +67,6 @@ func (s *stopService) GetStops(ctx context.Context, agencyIDs []string) ([]model
 }
 
 func (s *stopService) GetNearestStops(ctx context.Context, params models.GetNearestStopsParams) ([]models.Stop, error) {
-	s.logger.Debug("service---", "params", params)
-
 	mvStops, err := s.stopRepo.GetNearestStops(ctx, params)
 	if err != nil {
 		return nil, fmt.Errorf("service get nearest stops: %w", err)
@@ -77,14 +75,19 @@ func (s *stopService) GetNearestStops(ctx context.Context, params models.GetNear
 	// MV can return mutiple rows for combinations of (stop_id, agency_id)
 	// so grouping them by stop_id
 	mapStopID := make(map[string][]models.StopAgencyMV)
+	order := make([]string, 0, len(mvStops)) // to preserve returned sequence order
+
 	for _, mvStop := range mvStops {
+		if _, exists := mapStopID[mvStop.StopID]; !exists {
+			order = append(order, mvStop.StopID)
+		}
+
 		mapStopID[mvStop.StopID] = append(mapStopID[mvStop.StopID], mvStop)
 	}
-
 	// convert StopsMV to Stops
-	stops := make([]models.Stop, 0, len(mapStopID))
-	for _, mvStopGroup := range mapStopID {
-		stops = append(stops, convertStopAgencyMVtoStop(mvStopGroup))
+	stops := make([]models.Stop, 0, len(order))
+	for _, stopID := range order {
+		stops = append(stops, convertStopAgencyMVtoStop(mapStopID[stopID]))
 	}
 
 	return stops, nil
