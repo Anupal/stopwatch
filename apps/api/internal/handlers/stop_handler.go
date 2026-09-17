@@ -24,7 +24,7 @@ func NewStopHandler(s services.StopService, l *slog.Logger) *StopHandler {
 func (h *StopHandler) GetStops(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	agencyIDs := r.URL.Query()["agency_id"]
+	agencyIDs := r.URL.Query()["agencyId"]
 
 	stops, err := h.stopService.GetStops(r.Context(), agencyIDs)
 	if err != nil {
@@ -57,10 +57,11 @@ func (h *StopHandler) GetNearestStops(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query()
 
 	agencyIDs := query["agencyId"]
-	if len(agencyIDs) == 0 {
-		writeJSONError(w, http.StatusBadRequest, "Missing 'agencyId' query param.")
-		return
-	}
+	// Note: Disabling to default to return all agencies
+	// if len(agencyIDs) == 0 {
+	// 	writeJSONError(w, http.StatusBadRequest, "Missing 'agencyId' query param.")
+	// 	return
+	// }
 	latitude := query.Get("latitude")
 	if latitude == "" {
 		writeJSONError(w, http.StatusBadRequest, "Missing 'latitude' query param.")
@@ -82,8 +83,6 @@ func (h *StopHandler) GetNearestStops(w http.ResponseWriter, r *http.Request) {
 		Longitude:       longitude,
 		MaximumDistance: maxDistance,
 	}
-
-	h.logger.Debug("handler---", "params", params)
 
 	stops, err := h.stopService.GetNearestStops(r.Context(), params)
 	if err != nil {
