@@ -14,6 +14,7 @@ import (
 type StopRepository interface {
 	GetStopByID(ctx context.Context, stopID string) ([]models.StopAgencyMV, error)
 	GetStops(ctx context.Context, agencyIDs []string) ([]models.StopAgencyMV, error)
+	GetStopsByName(ctx context.Context, params models.GetStopsByNameParams) ([]models.StopAgencyMV, error)
 	GetNearestStops(ctx context.Context, params models.GetNearestStopsParams) ([]models.StopAgencyMV, error)
 }
 
@@ -63,11 +64,11 @@ func (r *stopRepository) GetStops(ctx context.Context, agencyIDs []string) ([]mo
 		FROM mv_agency_stops
 	`
 
-	var query_args []any
+	var queryArgs []any
 
 	if len(agencyIDs) > 0 {
 		query += ` WHERE agency_id = ANY($1)`
-		query_args = append(query_args, agencyIDs)
+		queryArgs = append(queryArgs, agencyIDs)
 	}
 
 	r.logger.Debug(
@@ -76,7 +77,7 @@ func (r *stopRepository) GetStops(ctx context.Context, agencyIDs []string) ([]mo
 		"agency_ids", agencyIDs,
 	)
 
-	rows, err := r.db.Query(ctx, query, query_args...)
+	rows, err := r.db.Query(ctx, query, queryArgs...)
 	if err != nil {
 		return nil, fmt.Errorf("repository query stops: %w", err)
 	}
@@ -143,33 +144,46 @@ func (r *stopRepository) GetNearestStops(ctx context.Context, params models.GetN
 	return stops, nil
 }
 
-// func (r *stopRepository) SearchStopsByName(ctx context.Context, searchName string, maxResults int) ([]models.Stop, error) {
-// 	query := `
-// 		SELECT stop_id, stop_code, stop_name, stop_lat, stop_lon
-// 		FROM stops
-// 		WHERE agency_id = $1
-// 			AND normalized_name % $2
-// 		ORDER BY similarity(normalized_name, $2) DESC
-// 		LIMIT $3;
-// 	`
+func (r *stopRepository) GetStopsByName(ctx context.Context, params models.GetStopsByNameParams) ([]models.StopAgencyMV, error) {
+	query := `
+		SELECT
+			stop_id, stop_code, stop_name, stop_lat, stop_lon,
+			agency_id, agency_name, agency_url
+		FROM mv_agency_stops`
+	var queryArgs []any
 
-// 	r.logger.Debug(
-// 		"Executing stops by name query",
-// 		"query", query,
-// 		"search_name", searchName,
-// 		"max_results", maxResults,
-// 	)
+	if len(params.AgencyIDs) > 0 {
+		query += `
+		WHERE agency_id = ANY($1)
+			AND normalized_name % $2
+		ORDER BY similarity(normalized_name, $2) DESC
+		LIMIT $3`
+		queryArgs = append(queryArgs, params.AgencyIDs)
+	} else {
+		query += `
+		WHERE normalized_name % $1
+		ORDER BY similarity(normalized_name, $1) DESC
+		LIMIT $2`
+	}
 
-// 	rows, err := r.db.Query(ctx, query, searchName, maxResults)
-// 	if err != nil {
-// 		return nil, fmt.Errorf("repository query search stops by name: %w", err)
-// 	}
-// 	defer rows.Close()
+	queryArgs = append(queryArgs, params.SearchQuery, params.MaxResults)
 
-// 	stops, err := pgx.CollectRows(rows, pgx.RowToStructByName[models.Stop])
-// 	if err != nil {
-// 		return nil, fmt.Errorf("repository collect search stops by name: %w", err)
-// 	}
+	r.logger.Debug(
+		"Executing stops by name query",
+		"query", query,
+		"params", params,
+	)
 
-// 	return stops, nil
-// }
+	rows, err := r.db.Query(ctx, query, queryArgs...)
+	if err != nil {
+		return nil, fmt.Errorf("repository query search stops by name: %w", err)
+	}
+	defer rows.Close()
+
+	stops, err := pgx.CollectRows(rows, pgx.RowToStructByNameLax[models.StopAgencyMV])
+	if err != nil {
+		return nil, fmt.Errorf("repository collect search stops by name: %w", err)
+	}
+
+	return stops, nil
+}

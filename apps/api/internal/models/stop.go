@@ -28,3 +28,9 @@ type GetNearestStopsParams struct {
 	Longitude       string
 	MaximumDistance string
 }
+
+type GetStopsByNameParams struct {
+	AgencyIDs   []string
+	SearchQuery string
+	MaxResults  int
+}
