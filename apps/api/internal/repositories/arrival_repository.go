@@ -26,7 +26,7 @@ func NewArrivalRepository(db *pgxpool.Pool, l *slog.Logger, feedTimeZone string)
 }
 
 func (r *arrivalRepository) GetByStop(ctx context.Context, params models.GetStopArrivalsParams) ([]models.Arrival, error) {
-	query := `SELECT * FROM get_upcoming_arrivals($1, $2, $3)`
+	query := `SELECT * FROM get_upcoming_arrivals($1, $2, $3, $4)`
 
 	r.logger.Debug(
 		"Executing arrivals query",
@@ -34,8 +34,9 @@ func (r *arrivalRepository) GetByStop(ctx context.Context, params models.GetStop
 		"stopID", params.StopID,
 		"minutesAhead", params.MinutesAhead,
 		"minutesBehind", params.MinutesBehind,
+		"timeZone", r.feedTimeZone,
 	)
-	rows, err := r.db.Query(ctx, query, params.StopID, params.MinutesAhead, params.MinutesBehind)
+	rows, err := r.db.Query(ctx, query, params.StopID, params.MinutesAhead, params.MinutesBehind, r.feedTimeZone)
 	if err != nil {
 		return nil, fmt.Errorf("repository query arrivals: %w", err)
 	}

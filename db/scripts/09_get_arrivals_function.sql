@@ -2,7 +2,8 @@
 CREATE OR REPLACE FUNCTION get_upcoming_arrivals(
     p_stop_id TEXT,
     p_minutes_ahead INT DEFAULT 30,
-    p_minutes_behind INT DEFAULT 15
+    p_minutes_behind INT DEFAULT 15,
+    p_timezone TEXT DEFAULT 'Europe/Dublin'
 )
 RETURNS TABLE (
     trip_id TEXT,
@@ -13,7 +14,6 @@ RETURNS TABLE (
     trip_headsign TEXT
 ) AS $$
 DECLARE
-    v_agency_tz     TEXT;
     v_distinct_tzs  INT;
     v_local_ts      TIMESTAMP;
     v_local_date    DATE;
@@ -21,14 +21,8 @@ DECLARE
     v_lo            INTERVAL;
     v_hi            INTERVAL;
 BEGIN
-    -- IMPORTANT: It is assumed that all agencies operate in the same timezone.
-    SELECT agency_timezone INTO v_agency_tz FROM agency LIMIT 1;
-    IF v_agency_tz IS NULL THEN
-        RAISE EXCEPTION 'No agency_timezone found in agency table';
-    END IF;
-
     -- Compute current time window based on timzone in agency table
-    v_local_ts   := now() AT TIME ZONE v_agency_tz;
+    v_local_ts   := now() AT TIME ZONE p_timezone;
     v_local_date := v_local_ts::date;
     v_now        := v_local_ts::time::interval;
     v_lo         := v_now - (p_minutes_behind || ' minutes')::interval;
