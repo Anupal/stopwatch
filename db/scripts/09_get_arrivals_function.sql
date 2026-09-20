@@ -1,46 +1,4 @@
--- 1. Create a view and function for upcoming arrivals for a stop
--- View for today's active schedule for a stop
-CREATE OR REPLACE VIEW v_today_arrivals AS
-WITH active_services AS (
-    SELECT c.service_id 
-    FROM calendar c
-    WHERE CURRENT_DATE BETWEEN c.start_date AND c.end_date
-      AND (
-          (EXTRACT(DOW FROM CURRENT_DATE) = 0 AND c.sunday = 1) OR
-          (EXTRACT(DOW FROM CURRENT_DATE) = 1 AND c.monday = 1) OR
-          (EXTRACT(DOW FROM CURRENT_DATE) = 2 AND c.tuesday = 1) OR
-          (EXTRACT(DOW FROM CURRENT_DATE) = 3 AND c.wednesday = 1) OR
-          (EXTRACT(DOW FROM CURRENT_DATE) = 4 AND c.thursday = 1) OR
-          (EXTRACT(DOW FROM CURRENT_DATE) = 5 AND c.friday = 1) OR
-          (EXTRACT(DOW FROM CURRENT_DATE) = 6 AND c.saturday = 1)
-      )
-      AND c.service_id NOT IN (
-          SELECT cd.service_id 
-          FROM calendar_dates cd 
-          WHERE cd.date = CURRENT_DATE AND cd.exception_type = 2
-      )
-    UNION
-    SELECT cd.service_id 
-    FROM calendar_dates cd
-    WHERE cd.date = CURRENT_DATE AND cd.exception_type = 1
-)
-SELECT 
-    t.trip_id,
-    st.stop_id,
-    s.stop_name,
-    st.arrival_time,
-    st.departure_time,
-    st.arrival_interval,
-    r.route_short_name,
-    r.route_long_name,
-    t.trip_headsign
-FROM stop_times st
-JOIN trips t ON st.trip_id = t.trip_id
-JOIN routes r ON t.route_id = r.route_id
-JOIN stops s ON st.stop_id = s.stop_id
-WHERE t.service_id IN (SELECT service_id FROM active_services);
-
--- Function to get windowed Arrivals (-p_minutes_behind to +p_minutes_ahead)
+-- 1. Create a view and function to get upcoming Arrivals (-p_minutes_behind to +p_minutes_ahead)
 CREATE OR REPLACE FUNCTION get_upcoming_arrivals(
     p_stop_id TEXT,
     p_minutes_ahead INT DEFAULT 30,
@@ -55,10 +13,27 @@ RETURNS TABLE (
     trip_headsign TEXT
 ) AS $$
 DECLARE
-    v_now       INTERVAL := LOCALTIME::interval;
-    v_lo        INTERVAL := LOCALTIME::interval - (p_minutes_behind || ' minutes')::interval;
-    v_hi        INTERVAL := LOCALTIME::interval + (p_minutes_ahead  || ' minutes')::interval;
+    v_agency_tz     TEXT;
+    v_distinct_tzs  INT;
+    v_local_ts      TIMESTAMP;
+    v_local_date    DATE;
+    v_now           INTERVAL;
+    v_lo            INTERVAL;
+    v_hi            INTERVAL;
 BEGIN
+    -- IMPORTANT: It is assumed that all agencies operate in the same timezone.
+    SELECT agency_timezone INTO v_agency_tz FROM agency LIMIT 1;
+    IF v_agency_tz IS NULL THEN
+        RAISE EXCEPTION 'No agency_timezone found in agency table';
+    END IF;
+
+    -- Compute current time window based on timzone in agency table
+    v_local_ts   := now() AT TIME ZONE v_agency_tz;
+    v_local_date := v_local_ts::date;
+    v_now        := v_local_ts::time::interval;
+    v_lo         := v_now - (p_minutes_behind || ' minutes')::interval;
+    v_hi         := v_now + (p_minutes_ahead  || ' minutes')::interval;
+
     RETURN QUERY
     WITH active_services AS (
         SELECT c.service_id 
