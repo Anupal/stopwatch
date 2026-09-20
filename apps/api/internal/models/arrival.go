@@ -24,7 +24,7 @@ type GetArrivalsResponse struct {
 
 const (
 	DefaultArrivalMinutesAhead  = 30
-	DefaultArrivalMinutesBehind = 5
+	DefaultArrivalMinutesBehind = 30
 )
 
 type GetStopArrivalsParams struct {
@@ -39,7 +39,5 @@ func (p *GetStopArrivalsParams) NormalizeMinutes() {
 	if p.MinutesAhead <= 0 {
 		p.MinutesAhead = DefaultArrivalMinutesAhead
 	}
-	if p.MinutesBehind < 0 {
-		p.MinutesBehind = DefaultArrivalMinutesBehind
-	}
+	p.MinutesBehind = DefaultArrivalMinutesBehind
 }
