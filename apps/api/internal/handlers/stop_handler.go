@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"sort"
 	"strconv"
 
 	"github.com/Anupal/stopwatch/internal/models"
@@ -162,6 +163,11 @@ func (h *StopHandler) GetArrivals(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusInternalServerError, "Failed to fetch arrivals")
 		return
 	}
+
+	// sort arrivals by arrival time
+	sort.Slice(arrivals, func(i, j int) bool {
+		return arrivals[i].ArrivalTime < arrivals[j].ArrivalTime
+	})
 
 	response := models.GetArrivalsResponse{
 		MinutesAhead: params.MinutesAhead,
