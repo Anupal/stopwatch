@@ -16,16 +16,17 @@ type ArrivalRepository interface {
 }
 
 type arrivalRepository struct {
-	db     *pgxpool.Pool
-	logger *slog.Logger
+	db           *pgxpool.Pool
+	logger       *slog.Logger
+	feedTimeZone string
 }
 
-func NewArrivalRepository(db *pgxpool.Pool, l *slog.Logger) ArrivalRepository {
-	return &arrivalRepository{db: db, logger: l}
+func NewArrivalRepository(db *pgxpool.Pool, l *slog.Logger, feedTimeZone string) ArrivalRepository {
+	return &arrivalRepository{db: db, logger: l, feedTimeZone: feedTimeZone}
 }
 
 func (r *arrivalRepository) GetByStop(ctx context.Context, params models.GetStopArrivalsParams) ([]models.Arrival, error) {
-	query := `SELECT * FROM get_upcoming_arrivals($1, $2, $3)`
+	query := `SELECT * FROM get_upcoming_arrivals($1, $2, $3, $4)`
 
 	r.logger.Debug(
 		"Executing arrivals query",
@@ -33,8 +34,9 @@ func (r *arrivalRepository) GetByStop(ctx context.Context, params models.GetStop
 		"stopID", params.StopID,
 		"minutesAhead", params.MinutesAhead,
 		"minutesBehind", params.MinutesBehind,
+		"timeZone", r.feedTimeZone,
 	)
-	rows, err := r.db.Query(ctx, query, params.StopID, params.MinutesAhead, params.MinutesBehind)
+	rows, err := r.db.Query(ctx, query, params.StopID, params.MinutesAhead, params.MinutesBehind, r.feedTimeZone)
 	if err != nil {
 		return nil, fmt.Errorf("repository query arrivals: %w", err)
 	}

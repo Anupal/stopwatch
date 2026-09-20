@@ -21,21 +21,27 @@ type GTFSRRepository interface {
 }
 
 type gtfsrRepository struct {
-	feedURL    string
-	feedApiKey string
-	logger     *slog.Logger
+	feedURL      string
+	feedApiKey   string
+	feedTimeZone string
+	logger       *slog.Logger
 
 	// map tripID -> tripUpdate
 	tripUpdateMap map[string]*gtfs.TripUpdate
 	feedFetchedAt time.Time
 }
 
-func NewGTFSRRepository(feedURL string, feedApiKey string, l *slog.Logger) GTFSRRepository {
-	return &gtfsrRepository{logger: l, feedApiKey: feedApiKey, feedURL: feedURL}
+func NewGTFSRRepository(feedURL string, feedApiKey string, feedTimeZone string, l *slog.Logger) GTFSRRepository {
+	return &gtfsrRepository{logger: l, feedApiKey: feedApiKey, feedURL: feedURL, feedTimeZone: feedTimeZone}
 }
 
 func (r *gtfsrRepository) UpdateArrivalsWithoutRealtime(arrivals []models.Arrival) ([]models.ArrivalResponse, error) {
-	now := time.Now()
+	loc, err := time.LoadLocation(r.feedTimeZone)
+	if err != nil {
+		return nil, err
+	}
+	now := time.Now().In(loc)
+
 	filteredArrivals := make([]models.ArrivalResponse, 0, len(arrivals))
 
 	for i := range arrivals {
@@ -62,7 +68,12 @@ func (r *gtfsrRepository) UpdateArrivalsWithoutRealtime(arrivals []models.Arriva
 }
 
 func (r *gtfsrRepository) UpdateArrivalsWithRealtime(stopID string, arrivals []models.Arrival) ([]models.ArrivalResponse, error) {
-	now := time.Now()
+	loc, err := time.LoadLocation(r.feedTimeZone)
+	if err != nil {
+		return nil, err
+	}
+	now := time.Now().In(loc)
+
 	filteredArrivals := make([]models.ArrivalResponse, 0, len(arrivals))
 
 	r.logger.Debug("Applying realtime updates to arrivals",

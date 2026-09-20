@@ -55,10 +55,11 @@ func main() {
 
 	// Initialize repos, services and handlers
 	stopRepo := repositories.NewStopRepository(pool, logger)
-	arrivalRepo := repositories.NewArrivalRepository(pool, logger)
+	arrivalRepo := repositories.NewArrivalRepository(pool, logger, cfg.GTFSRTimeZone)
 	gtfsrRepo := repositories.NewGTFSRRepository(
 		cfg.GTFSRUrl,
 		cfg.GTFSRApiKey,
+		cfg.GTFSRTimeZone,
 		logger,
 	)
 	stopService := services.NewStopService(stopRepo, arrivalRepo, gtfsrRepo, logger)
