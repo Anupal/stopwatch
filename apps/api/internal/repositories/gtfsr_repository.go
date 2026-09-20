@@ -36,7 +36,12 @@ func NewGTFSRRepository(feedURL string, feedApiKey string, feedTimeZone string, 
 }
 
 func (r *gtfsrRepository) UpdateArrivalsWithoutRealtime(arrivals []models.Arrival) ([]models.ArrivalResponse, error) {
-	now := time.Now()
+	loc, err := time.LoadLocation(r.feedTimeZone)
+	if err != nil {
+		return nil, err
+	}
+	now := time.Now().In(loc)
+
 	filteredArrivals := make([]models.ArrivalResponse, 0, len(arrivals))
 
 	for i := range arrivals {
@@ -63,7 +68,12 @@ func (r *gtfsrRepository) UpdateArrivalsWithoutRealtime(arrivals []models.Arriva
 }
 
 func (r *gtfsrRepository) UpdateArrivalsWithRealtime(stopID string, arrivals []models.Arrival) ([]models.ArrivalResponse, error) {
-	now := time.Now()
+	loc, err := time.LoadLocation(r.feedTimeZone)
+	if err != nil {
+		return nil, err
+	}
+	now := time.Now().In(loc)
+
 	filteredArrivals := make([]models.ArrivalResponse, 0, len(arrivals))
 
 	r.logger.Debug("Applying realtime updates to arrivals",
