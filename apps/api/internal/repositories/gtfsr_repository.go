@@ -21,17 +21,18 @@ type GTFSRRepository interface {
 }
 
 type gtfsrRepository struct {
-	feedURL    string
-	feedApiKey string
-	logger     *slog.Logger
+	feedURL      string
+	feedApiKey   string
+	feedTimeZone string
+	logger       *slog.Logger
 
 	// map tripID -> tripUpdate
 	tripUpdateMap map[string]*gtfs.TripUpdate
 	feedFetchedAt time.Time
 }
 
-func NewGTFSRRepository(feedURL string, feedApiKey string, l *slog.Logger) GTFSRRepository {
-	return &gtfsrRepository{logger: l, feedApiKey: feedApiKey, feedURL: feedURL}
+func NewGTFSRRepository(feedURL string, feedApiKey string, feedTimeZone string, l *slog.Logger) GTFSRRepository {
+	return &gtfsrRepository{logger: l, feedApiKey: feedApiKey, feedURL: feedURL, feedTimeZone: feedTimeZone}
 }
 
 func (r *gtfsrRepository) UpdateArrivalsWithoutRealtime(arrivals []models.Arrival) ([]models.ArrivalResponse, error) {

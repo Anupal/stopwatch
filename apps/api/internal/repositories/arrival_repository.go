@@ -16,12 +16,13 @@ type ArrivalRepository interface {
 }
 
 type arrivalRepository struct {
-	db     *pgxpool.Pool
-	logger *slog.Logger
+	db           *pgxpool.Pool
+	logger       *slog.Logger
+	feedTimeZone string
 }
 
-func NewArrivalRepository(db *pgxpool.Pool, l *slog.Logger) ArrivalRepository {
-	return &arrivalRepository{db: db, logger: l}
+func NewArrivalRepository(db *pgxpool.Pool, l *slog.Logger, feedTimeZone string) ArrivalRepository {
+	return &arrivalRepository{db: db, logger: l, feedTimeZone: feedTimeZone}
 }
 
 func (r *arrivalRepository) GetByStop(ctx context.Context, params models.GetStopArrivalsParams) ([]models.Arrival, error) {
